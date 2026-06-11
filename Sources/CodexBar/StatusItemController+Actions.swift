@@ -36,13 +36,13 @@ extension StatusItemController: StatusItemMenuPersistentActionDelegate {
             if refreshOpenMenusWhenComplete {
                 self.refreshOpenMenusAfterExplicitStoreAction()
             } else {
-                self.invalidateMenus()
+                self.menuViewModel.bumpContentVersion()
             }
         }
     }
 
     func refreshOpenMenusAfterExplicitStoreAction() {
-        self.invalidateMenus(refreshOpenMenus: true)
+        self.menuViewModel.bumpContentVersion()
     }
 
     @objc func refreshNow() {

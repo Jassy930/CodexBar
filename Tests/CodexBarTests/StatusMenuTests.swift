@@ -248,35 +248,9 @@ struct StatusMenuTests {
         #expect(controller.lastMenuProvider == expectedResolved)
     }
 
-    @Test
-    func `shortcut closes tracked menu instead of queueing another open`() {
-        self.disableMenuCardsForTesting()
-        let settings = self.makeSettings()
-        settings.statusChecksEnabled = false
-        settings.refreshFrequency = .manual
-        settings.mergeIcons = true
-
-        let fetcher = UsageFetcher()
-        let store = UsageStore(fetcher: fetcher, browserDetection: BrowserDetection(cacheTTL: 0), settings: settings)
-        let controller = StatusItemController(
-            store: store,
-            settings: settings,
-            account: fetcher.loadAccountInfo(),
-            updater: DisabledUpdaterController(),
-            preferencesSelection: PreferencesSelection(),
-            statusBar: self.makeStatusBarForTesting())
-
-        let menu = controller.makeMenu()
-        controller.menuWillOpen(menu)
-        let key = ObjectIdentifier(menu)
-        controller.openMenus[key] = menu
-        #expect(controller.openMenus[key] != nil)
-
-        #expect(controller.closeOpenMenusFromShortcutIfNeeded() == true)
-        #expect(controller.openMenus.isEmpty)
-        #expect(controller.menuRefreshTasks.isEmpty)
-        #expect(controller.closeOpenMenusFromShortcutIfNeeded() == false)
-    }
+    // NOTE: `shortcut closes tracked menu instead of queueing another open` removed —
+    // closeOpenMenusFromShortcutIfNeeded() and NSMenu openMenus tracking were deleted in
+    // the popover-only refactor (Step 2). This test is superseded by PopoverMenuTests.
 
     @Test
     func `open menu defers store data refresh until next open`() async {

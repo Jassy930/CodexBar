@@ -485,18 +485,7 @@ final class StatusItemController: NSObject, NSMenuDelegate, StatusItemControllin
 
     func handleObservedStoreMenuChange() {
         self.observeStoreChanges()
-        let rootOpenHandledReadiness = self.consumeRootOpenHandledMenuObservationIfNeeded()
-        // `refreshOpenMenus` is only consulted when a menu is currently open.
-        // Computing the readiness signature serializes every enabled provider's
-        // token snapshot and 30-day daily breakdown, which is wasted main-thread
-        // work on the common path where no menu is open (background refresh ticks).
-        let refreshOpenMenus = self.openMenus.isEmpty
-            ? false
-            : rootOpenHandledReadiness || self.didMenuAdjunctReadinessChange()
-        self.invalidateMenus(
-            refreshOpenMenus: refreshOpenMenus,
-            deferOpenParentMenuRebuild: true,
-            allowStaleContentDuringDataRefresh: true)
+        self.menuViewModel.bumpContentVersion()
     }
 
     private func observeStoreIconChanges() {
@@ -592,7 +581,7 @@ final class StatusItemController: NSObject, NSMenuDelegate, StatusItemControllin
             Task { @MainActor [weak self] in
                 guard let self else { return }
                 self.observeUpdaterChanges()
-                self.invalidateMenus()
+                self.menuViewModel.bumpContentVersion()
             }
         }
     }
@@ -654,7 +643,7 @@ final class StatusItemController: NSObject, NSMenuDelegate, StatusItemControllin
         let configChanged = self.settings.configRevision != self.lastConfigRevision
         let orderChanged = self.settings.providerOrder != self.lastProviderOrder
         let shouldRefreshOpenMenus = self.shouldRefreshOpenMenusForProviderSwitcher()
-        self.invalidateMenus()
+        self.menuViewModel.bumpContentVersion()
         if orderChanged || configChanged {
             self.rebuildProviderStatusItems()
         }
@@ -771,7 +760,7 @@ final class StatusItemController: NSObject, NSMenuDelegate, StatusItemControllin
         #if DEBUG
         guard !self.isReleasedForTesting else { return }
         #endif
-        self.invalidateMenus()
+        self.menuViewModel.bumpContentVersion()
         if self.shouldMergeIcons {
             guard !self.isMergedMenuOpen else { return }
             self.attachMenus()

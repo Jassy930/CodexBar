@@ -8,7 +8,7 @@ extension StatusItemController {
         #if DEBUG
         guard !self.isReleasedForTesting else { return }
         #endif
-        self.invalidateMenus(refreshOpenMenus: refreshOpenMenus)
+        self.menuViewModel.bumpContentVersion()
         if deferRendering {
             self.scheduleProviderSelectionUIRefresh()
             return
