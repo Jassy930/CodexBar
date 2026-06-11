@@ -1555,16 +1555,6 @@ extension StatusItemController {
         return self.makeHostedSubviewPlaceholderMenu(chartID: Self.costHistoryChartID, provider: provider)
     }
 
-    func tokenSnapshotForCostHistorySubmenu(provider: UsageProvider) -> CostUsageTokenSnapshot? {
-        let projected = self.store.tokenSnapshot(
-            fromProviderSnapshot: self.store.snapshot(for: provider),
-            provider: provider)
-        if UsageStore.tokenCostRequiresProviderSnapshot(provider) {
-            return projected
-        }
-        return projected ?? self.store.tokenSnapshot(for: provider)
-    }
-
     func makeOpenAIAPIUsageSubmenu(provider: UsageProvider, width: CGFloat? = nil) -> NSMenu? {
         guard self.hasOpenAIAPIUsageSubmenu(provider: provider) else { return nil }
         return self.makeCostHistorySubmenu(provider: provider, width: width)

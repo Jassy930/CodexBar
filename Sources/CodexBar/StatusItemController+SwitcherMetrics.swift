@@ -1,6 +1,13 @@
 import CodexBarCore
 
 extension StatusItemController {
+    func switcherWeeklyRemaining(for provider: UsageProvider) -> Double? {
+        Self.switcherWeeklyMetricPercent(
+            for: provider,
+            snapshot: self.store.snapshot(for: provider),
+            showUsed: self.settings.usageBarsShowUsed)
+    }
+
     nonisolated static func switcherWeeklyMetricPercent(
         for provider: UsageProvider,
         snapshot: UsageSnapshot?,

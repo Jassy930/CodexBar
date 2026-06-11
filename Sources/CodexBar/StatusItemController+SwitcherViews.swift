@@ -2,11 +2,6 @@ import AppKit
 import CodexBarCore
 import QuartzCore
 
-enum ProviderSwitcherSelection: Hashable {
-    case overview
-    case provider(UsageProvider)
-}
-
 final class ProviderSwitcherView: NSView {
     private struct Segment {
         let selection: ProviderSwitcherSelection

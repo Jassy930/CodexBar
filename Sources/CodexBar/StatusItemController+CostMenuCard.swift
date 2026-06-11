@@ -1,6 +1,17 @@
 import AppKit
+import CodexBarCore
 
 extension StatusItemController {
+    func tokenSnapshotForCostHistorySubmenu(provider: UsageProvider) -> CostUsageTokenSnapshot? {
+        let projected = self.store.tokenSnapshot(
+            fromProviderSnapshot: self.store.snapshot(for: provider),
+            provider: provider)
+        if UsageStore.tokenCostRequiresProviderSnapshot(provider) {
+            return projected
+        }
+        return projected ?? self.store.tokenSnapshot(for: provider)
+    }
+
     static var costMenuTitle: String {
         L("Cost")
     }
