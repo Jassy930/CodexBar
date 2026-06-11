@@ -343,11 +343,6 @@ extension StatusItemController: StatusItemMenuPersistentActionDelegate {
     }
 
     @objc func quit() {
-        let openMenus = Array(self.openMenus.values)
-        for menu in openMenus {
-            menu.cancelTrackingWithoutAnimation()
-        }
-
         self.scheduleQuitTermination { [weak self] in
             guard let self else { return }
             self.prepareForAppShutdown()

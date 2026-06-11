@@ -82,12 +82,7 @@ struct UserFacingLocalizationCoverageTests {
                 "\"Disabled —",
                 ".accessibilityLabel(\"Reorder\")",
             ],
-            "Sources/CodexBar/StatusItemController+UsageHistoryMenu.swift": [
-                "Text(\"Subscription Utilization\")",
-            ],
-            "Sources/CodexBar/StatusItemController+CostMenuCard.swift": [
-                "static let costMenuTitle",
-            ],
+
             "Sources/CodexBar/UsageBreakdownChartMenuView.swift": [
                 ".value(\"Day\"",
                 ".value(\"Credits used\"",

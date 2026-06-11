@@ -22,7 +22,7 @@ extension StatusItemControlling {
 }
 
 @MainActor
-final class StatusItemController: NSObject, NSMenuDelegate, StatusItemControlling {
+final class StatusItemController: NSObject, StatusItemControlling {
     // Disable SwiftUI menu cards + menu refresh work in tests to avoid swiftpm-testing-helper crashes.
     static var menuCardRenderingEnabled = !SettingsStore.isRunningTests
     private static let defaultMenuRefreshEnabled = !SettingsStore.isRunningTests
@@ -113,34 +113,6 @@ final class StatusItemController: NSObject, NSMenuDelegate, StatusItemControllin
     var statusItem: NSStatusItem
     var statusItems: [UsageProvider: NSStatusItem] = [:]
     var lastMenuProvider: UsageProvider?
-    var menuProviders: [ObjectIdentifier: UsageProvider] = [:]
-    var menuContentVersion: Int = 0
-    var latestRequiredMenuRebuildVersion: Int = 0
-    var menuVersions: [ObjectIdentifier: Int] = [:]
-    var menuReadinessSignatures: [ObjectIdentifier: String] = [:]
-    var menuCardHeightCache: [MenuCardHeightCacheKey: CGFloat] = [:]
-    var measuredStandardMenuWidthCache: [String: CGFloat] = [:]
-    var lastMenuAdjunctReadinessSignature = ""
-    var lastMenuAdjunctReadinessBaselineVersion = 0
-    var rootOpenHandledMenuObservationSignature: String?
-    var mergedMenu: NSMenu?
-    var providerMenus: [UsageProvider: NSMenu] = [:]
-    var fallbackMenu: NSMenu?
-    var openMenus: [ObjectIdentifier: NSMenu] = [:]
-    var menuRefreshTasks: [ObjectIdentifier: Task<Void, Never>] = [:]
-    var closedMenuRebuildTasks: [ObjectIdentifier: Task<Void, Never>] = [:]
-    var closedMenuRebuildTokens: [ObjectIdentifier: Int] = [:]
-    var closedMenuRebuildTokenCounter = 0
-    var closedMenusDeferredUntilNextOpen: Set<ObjectIdentifier> = []
-    var openMenuRebuildTasks: [ObjectIdentifier: Task<Void, Never>] = [:]
-    var openMenuRebuildTokens: [ObjectIdentifier: Int] = [:]
-    var openMenuRebuildTokenCounter = 0
-    var openMenuRebuildsClosingHostedSubviewMenus: Set<ObjectIdentifier> = []
-    var parentMenuRebuildsDeferredDuringTracking: Set<ObjectIdentifier> = []
-    var deferredMenuInteractionRefreshPending = false
-    var deferredOpenAIDashboardRefreshReason: String?
-    var deferredMenuInteractionRefreshTask: Task<Void, Never>?
-    var highlightedMenuItems: [ObjectIdentifier: NSMenuItem] = [:]
 
     // MARK: - Popover menu
 
@@ -150,10 +122,6 @@ final class StatusItemController: NSObject, NSMenuDelegate, StatusItemControllin
     var providerPopoverControllers: [UsageProvider: PopoverMenuController<PopoverRootView>] = [:]
     var providerMenuViewModels: [UsageProvider: MenuViewModel] = [:]
 
-    var providerSwitcherShortcutEventMonitor: ProviderSwitcherShortcutEventMonitor?
-    var providerSwitcherShortcutMenuID: ObjectIdentifier?
-    var providerSwitcherPointerInteractionMenuID: ObjectIdentifier?
-    var pendingProviderSwitcherPointerRebuild: PendingProviderSwitcherRebuild?
     var hasPreparedForAppShutdown = false
     var scheduleQuitTermination: (@escaping @MainActor () -> Void) -> Void = { operation in
         DispatchQueue.main.async {
@@ -167,16 +135,8 @@ final class StatusItemController: NSObject, NSMenuDelegate, StatusItemControllin
         NSApp.terminate(nil)
     }
 
-    var openMenuInvalidationRetryTask: Task<Void, Never>?
     #if DEBUG
-    var onDelayedMenuRefreshAttemptForTesting: (() -> Void)?
-    var onDeferredMenuInteractionRefreshForTesting: (() -> Void)?
-    var onOpenMenuInvalidationRetryForTesting: (() -> Void)?
     var isReleasedForTesting = false
-    var lastLoggedClosedMenuRebuildVersion: Int?
-    var _test_openMenuRefreshYieldOverride: (@MainActor () async -> Void)?
-    var _test_openMenuRebuildObserver: (@MainActor (NSMenu) -> Void)?
-    var _test_providerSwitcherMenuRebuildDebounceNanoseconds: UInt64?
     var _test_codexAmbientLoginRunnerOverride:
         (@MainActor (TimeInterval) async -> CodexLoginRunner.Result)?
     #endif
@@ -221,28 +181,13 @@ final class StatusItemController: NSObject, NSMenuDelegate, StatusItemControllin
     private var lastSwitcherShowsIcons: Bool
     private var lastObservedUsageBarsShowUsed: Bool
     /// Tracks which `usageBarsShowUsed` mode the provider switcher was built with.
-    /// Used to decide whether we can "smart update" menu content without rebuilding the switcher.
     var lastSwitcherUsageBarsShowUsed: Bool
     /// Tracks whether the merged-menu switcher was built with the Overview tab visible.
-    /// Used to force switcher rebuilds when Overview availability toggles.
     var lastSwitcherIncludesOverview: Bool = false
-    /// Tracks localization-sensitive labels used by the merged menu.
-    /// Used to force menu rebuilds when app language changes.
-    var lastMenuLocalizationSignature: String = ""
-    /// Tracks which providers the merged menu's switcher was built with, to detect when it needs full rebuild.
+    /// Tracks which providers the merged menu's switcher was built with.
     var lastSwitcherProviders: [UsageProvider] = []
     /// Tracks which switcher tab state was used for the current merged-menu switcher instance.
     var lastMergedSwitcherSelection: ProviderSwitcherSelection?
-    /// Tracks which provider/overview content is currently attached below the merged-menu switcher.
-    var lastMergedMenuContentSelection: ProviderSwitcherSelection?
-    /// Tracks the visible Codex account switcher contents for merged-menu smart updates.
-    var lastCodexAccountMenuDisplay: CodexAccountMenuDisplay?
-    /// Tracks the visible token account switcher contents for merged-menu smart updates.
-    var lastTokenAccountMenuDisplay: TokenAccountMenuDisplay?
-    /// Keeps detached merged-menu tab content reusable while the same menu remains open.
-    var mergedSwitcherContentCaches: [ObjectIdentifier: [ProviderSwitcherSelection: CachedMergedSwitcherMenuContent]]
-        = [:]
-    var preservesMergedSwitcherContentCachesDuringInvalidation = false
     /// Monotonic token used to ignore stale deferred provider-switcher menu rebuilds.
     var providerSwitcherUpdateToken = 0
     var providerSelectionUIRefreshTask: Task<Void, Never>?
@@ -406,8 +351,6 @@ final class StatusItemController: NSObject, NSMenuDelegate, StatusItemControllin
                 "Repaired hidden macOS status-item visibility defaults",
                 metadata: ["keys": repairedStatusItemVisibilityKeys.joined(separator: ",")])
         }
-        self.lastMenuAdjunctReadinessSignature = self.menuAdjunctReadinessSignature()
-        self.lastMenuAdjunctReadinessBaselineVersion = self.menuContentVersion
         self.wireBindings()
         self.updateVisibility()
         self.updateIcons()
@@ -630,9 +573,6 @@ final class StatusItemController: NSObject, NSMenuDelegate, StatusItemControllin
             self.lastObservedUsageBarsShowUsed = usageBarsShowUsed
             shouldRefresh = true
         }
-        if self.menuLocalizationSignature() != self.lastMenuLocalizationSignature {
-            shouldRefresh = true
-        }
         return shouldRefresh
     }
 
@@ -642,16 +582,12 @@ final class StatusItemController: NSObject, NSMenuDelegate, StatusItemControllin
         #endif
         let configChanged = self.settings.configRevision != self.lastConfigRevision
         let orderChanged = self.settings.providerOrder != self.lastProviderOrder
-        let shouldRefreshOpenMenus = self.shouldRefreshOpenMenusForProviderSwitcher()
         self.menuViewModel.bumpContentVersion()
         if orderChanged || configChanged {
             self.rebuildProviderStatusItems()
         }
         self.updateVisibility()
         self.updateIcons()
-        if shouldRefreshOpenMenus {
-            self.refreshOpenMenusForStructureChange()
-        }
     }
 
     private func updateIcons() {
@@ -796,19 +732,6 @@ final class StatusItemController: NSObject, NSMenuDelegate, StatusItemControllin
     }
 
     private func removeProviderStatusItem(for provider: UsageProvider) {
-        if let menu = self.providerMenus.removeValue(forKey: provider) {
-            let menuID = ObjectIdentifier(menu)
-            self.menuProviders.removeValue(forKey: menuID)
-            self.menuVersions.removeValue(forKey: menuID)
-            self.openMenus.removeValue(forKey: menuID)
-            self.menuRefreshTasks.removeValue(forKey: menuID)?.cancel()
-            self.openMenuRebuildTasks.removeValue(forKey: menuID)?.cancel()
-            self.openMenuRebuildTokens.removeValue(forKey: menuID)
-            self.openMenuRebuildsClosingHostedSubviewMenus.remove(menuID)
-            self.parentMenuRebuildsDeferredDuringTracking.remove(menuID)
-            self.highlightedMenuItems.removeValue(forKey: menuID)
-        }
-
         guard let item = self.statusItems.removeValue(forKey: provider) else { return }
         item.menu = nil
         self.lastAppliedProviderIconRenderSignatures.removeValue(forKey: provider)

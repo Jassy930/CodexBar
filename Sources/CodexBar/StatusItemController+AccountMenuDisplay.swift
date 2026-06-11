@@ -60,16 +60,5 @@ extension StatusItemController {
         return accounts.compactMap { snapshotsByID[$0.id] }
     }
 
-    func stableCodexAccountMenuDisplay(
-        _ display: CodexAccountMenuDisplay?,
-        menu: NSMenu,
-        provider: UsageProvider) -> CodexAccountMenuDisplay?
-    {
-        guard provider == .codex else { return display }
-        guard display == nil else { return display }
-        guard self.openMenus[ObjectIdentifier(menu)] != nil else { return display }
-        guard menu.items.contains(where: { $0.view is CodexAccountSwitcherView }) else { return display }
-        guard let previous = self.lastCodexAccountMenuDisplay, previous.showSwitcher else { return display }
-        return previous
-    }
+
 }

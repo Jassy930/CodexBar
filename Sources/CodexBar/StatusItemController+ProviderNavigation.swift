@@ -2,7 +2,6 @@ import CodexBarCore
 
 extension StatusItemController {
     func refreshProviderSelectionDependentUI(
-        refreshOpenMenus: Bool = false,
         deferRendering: Bool = false)
     {
         #if DEBUG
@@ -59,19 +58,17 @@ extension StatusItemController {
         let delta = direction == .next ? 1 : -1
         let nextIndex = (currentIndex + delta + selections.count) % selections.count
         let selection = selections[nextIndex]
-        self.preservingMergedSwitcherContentCachesDuringInvalidation {
-            switch selection {
-            case .overview:
-                self.settings.mergedMenuLastSelectedWasOverview = true
-                self.lastMenuProvider = self.navigationResolvedProvider(enabledProviders: enabledProviders) ?? .codex
-            case let .provider(provider):
-                self.settings.mergedMenuLastSelectedWasOverview = false
-                self.selectedMenuProvider = provider
-                self.lastMenuProvider = provider
-            }
-            self.lastMergedSwitcherSelection = selection
-            self.refreshProviderSelectionDependentUI(refreshOpenMenus: true, deferRendering: true)
+        switch selection {
+        case .overview:
+            self.settings.mergedMenuLastSelectedWasOverview = true
+            self.lastMenuProvider = self.navigationResolvedProvider(enabledProviders: enabledProviders) ?? .codex
+        case let .provider(provider):
+            self.settings.mergedMenuLastSelectedWasOverview = false
+            self.selectedMenuProvider = provider
+            self.lastMenuProvider = provider
         }
+        self.lastMergedSwitcherSelection = selection
+        self.refreshProviderSelectionDependentUI(deferRendering: true)
     }
 
     private func navigationResolvedProvider(enabledProviders: [UsageProvider]) -> UsageProvider? {
