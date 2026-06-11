@@ -57,13 +57,6 @@ struct OverviewMenuCardRowView: View {
     }
 }
 
-struct OpenAIWebMenuItems {
-    let hasUsageBreakdown: Bool
-    let hasCreditsHistory: Bool
-    let hasCostHistory: Bool
-    let canShowBuyCredits: Bool
-}
-
 struct TokenAccountMenuDisplay: Equatable {
     let provider: UsageProvider
     let accounts: [ProviderTokenAccount]

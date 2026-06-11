@@ -21,7 +21,6 @@ struct SettingsDefaultsState {
     var quotaWarningMarkersVisible: Bool
     var weeklyProgressWorkDays: Int?
     var usageBarsShowUsed: Bool
-    var usePopoverMenu: Bool
     var resetTimesShowAbsolute: Bool
     var providerChangelogLinksEnabled: Bool
     var menuBarShowsBrandIconWithPercent: Bool

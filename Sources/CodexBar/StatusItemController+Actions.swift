@@ -9,7 +9,7 @@ enum LoginNotificationLogic {
     }
 }
 
-extension StatusItemController: StatusItemMenuPersistentActionDelegate {
+extension StatusItemController {
     // MARK: - Actions reachable from menus
 
     func refreshStore(
@@ -47,32 +47,6 @@ extension StatusItemController: StatusItemMenuPersistentActionDelegate {
 
     @objc func refreshNow() {
         self.refreshStore(forceTokenUsage: true)
-    }
-
-    nonisolated func performPersistentRefreshAction() {
-        Task { @MainActor [weak self] in
-            self?.refreshNow()
-        }
-    }
-
-    nonisolated func performPersistentSettingsAction() {
-        Task { @MainActor [weak self] in
-            guard let self else { return }
-            self.showSettingsGeneral()
-        }
-    }
-
-    nonisolated func performPersistentQuitAction() {
-        Task { @MainActor [weak self] in
-            guard let self else { return }
-            self.quit()
-        }
-    }
-
-    nonisolated func performProviderNavigation(_ direction: StatusItemMenuProviderNavigationDirection) {
-        Task { @MainActor [weak self] in
-            self?.navigateProviderSwitcher(direction)
-        }
     }
 
     @objc func refreshAugmentSession() {

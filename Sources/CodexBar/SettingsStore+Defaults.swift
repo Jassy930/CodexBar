@@ -201,14 +201,6 @@ extension SettingsStore {
         }
     }
 
-    var usePopoverMenu: Bool {
-        get { self.defaultsState.usePopoverMenu }
-        set {
-            self.defaultsState.usePopoverMenu = newValue
-            self.userDefaults.set(newValue, forKey: "usePopoverMenu")
-        }
-    }
-
     var resetTimesShowAbsolute: Bool {
         get { self.defaultsState.resetTimesShowAbsolute }
         set {

@@ -1,5 +1,5 @@
-import AppKit
 import CodexBarCore
+import Foundation
 
 extension StatusItemController {
     func tokenAccountMenuDisplay(for provider: UsageProvider) -> TokenAccountMenuDisplay? {
@@ -59,6 +59,4 @@ extension StatusItemController {
         }
         return accounts.compactMap { snapshotsByID[$0.id] }
     }
-
-
 }
