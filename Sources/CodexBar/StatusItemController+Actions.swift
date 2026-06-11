@@ -58,7 +58,6 @@ extension StatusItemController: StatusItemMenuPersistentActionDelegate {
     nonisolated func performPersistentSettingsAction() {
         Task { @MainActor [weak self] in
             guard let self else { return }
-            self.closeOpenMenusFromShortcutIfNeeded()
             self.showSettingsGeneral()
         }
     }
@@ -66,7 +65,6 @@ extension StatusItemController: StatusItemMenuPersistentActionDelegate {
     nonisolated func performPersistentQuitAction() {
         Task { @MainActor [weak self] in
             guard let self else { return }
-            self.closeOpenMenusFromShortcutIfNeeded()
             self.quit()
         }
     }
@@ -269,19 +267,12 @@ extension StatusItemController: StatusItemMenuPersistentActionDelegate {
     }
 
     func openMenuFromShortcut() {
-        if self.closeOpenMenusFromShortcutIfNeeded() {
-            return
-        }
-
         if self.shouldMergeIcons {
-            if self.usePopoverMenu, let button = self.statusItem.button {
-                self.refreshPopoverViewModelInputs()
-                self.popoverMenuController?.toggle(relativeTo: button)
-                if self.popoverMenuController?.isShown == true {
-                    self.schedulePopoverOpenRefresh(providers: self.menuViewModel.providers)
-                }
-            } else {
-                self.statusItem.button?.performClick(nil)
+            guard let button = self.statusItem.button else { return }
+            self.refreshPopoverViewModelInputs()
+            self.popoverMenuController?.toggle(relativeTo: button)
+            if self.popoverMenuController?.isShown == true {
+                self.schedulePopoverOpenRefresh(providers: self.menuViewModel.providers)
             }
             return
         }
@@ -289,21 +280,18 @@ extension StatusItemController: StatusItemMenuPersistentActionDelegate {
         let provider = self.resolvedShortcutProvider()
         // Use the lazy accessor to ensure the item exists
         let item = self.lazyStatusItem(for: provider)
-        if self.usePopoverMenu, let button = item.button {
-            // 确保 popover controller 已创建（快捷键可能先于 attachProviderPopovers 触发）
-            self.ensureProviderPopover(for: provider)
-            self.closeAllProviderPopovers(except: provider)
-            self.providerPopoverControllers[provider]?.toggle(relativeTo: button)
-            if self.providerPopoverControllers[provider]?.isShown == true {
-                self.schedulePopoverOpenRefresh(providers: [provider])
-            }
-        } else {
-            item.button?.performClick(nil)
+        guard let button = item.button else { return }
+        // 确保 popover controller 已创建（快捷键可能先于 attachProviderPopovers 触发）
+        self.ensureProviderPopover(for: provider)
+        self.closeAllProviderPopovers(except: provider)
+        self.providerPopoverControllers[provider]?.toggle(relativeTo: button)
+        if self.providerPopoverControllers[provider]?.isShown == true {
+            self.schedulePopoverOpenRefresh(providers: [provider])
         }
     }
 
     @objc func handleStatusItemClick(_ sender: Any?) {
-        guard self.usePopoverMenu, let button = self.statusItem.button else { return }
+        guard let button = self.statusItem.button else { return }
         self.refreshPopoverViewModelInputs()
         self.popoverMenuController?.toggle(relativeTo: button)
         if self.popoverMenuController?.isShown == true {
@@ -314,25 +302,13 @@ extension StatusItemController: StatusItemMenuPersistentActionDelegate {
     /// 非合并模式 per-provider statusItem 按钮点击处理（popover 路径）。
     /// sender 即 NSStatusBarButton；通过恒等比较反查 provider。
     @objc func handleProviderStatusItemClick(_ sender: Any?) {
-        guard self.usePopoverMenu, let button = sender as? NSStatusBarButton else { return }
+        guard let button = sender as? NSStatusBarButton else { return }
         guard let provider = self.statusItems.first(where: { $0.value.button === button })?.key else { return }
         self.closeAllProviderPopovers(except: provider)
         self.providerPopoverControllers[provider]?.toggle(relativeTo: button)
         if self.providerPopoverControllers[provider]?.isShown == true {
             self.schedulePopoverOpenRefresh(providers: [provider])
         }
-    }
-
-    @discardableResult
-    func closeOpenMenusFromShortcutIfNeeded() -> Bool {
-        guard !self.openMenus.isEmpty else { return false }
-
-        let menus = Array(self.openMenus.values)
-        for menu in menus {
-            menu.cancelTrackingWithoutAnimation()
-            self.forgetClosedMenu(menu)
-        }
-        return true
     }
 
     func celebrationOriginPoint(for provider: UsageProvider?) -> CGPoint? {

@@ -7,21 +7,10 @@ import SwiftUI
 //
 // 把 popover 相关的接入逻辑从 StatusItemController 主体抽出，集中于此扩展，
 // 既保持主类体在 swiftlint type_body_length 限制内，也便于后续阶段在此扩展。
-// 仅当 `usePopoverMenu` 开关开启时这些路径才生效；关闭时主类走原有 NSMenu 逻辑。
 
 extension StatusItemController {
-    /// 特性开关：是否启用 NSPopover 菜单（替代 NSMenu）。
-    /// dev 辅助：环境变量 CODEXBAR_FORCE_POPOVER=0/1 可覆盖设置值，
-    /// 用于同机双实例并排对比新旧菜单（两实例共享 UserDefaults 域，只能靠 env 区分）。
-    var usePopoverMenu: Bool {
-        if let forced = ProcessInfo.processInfo.environment["CODEXBAR_FORCE_POPOVER"] {
-            return forced == "1"
-        }
-        return self.settings.usePopoverMenu
-    }
-
     /// 合并模式下安装 popover：清掉 statusItem.menu，懒创建 PopoverMenuController 并接线快捷键回调，
-    /// 再把状态项按钮点击（含右键）路由到 handleStatusItemClick。仅在 usePopoverMenu 开启时调用。
+    /// 再把状态项按钮点击（含右键）路由到 handleStatusItemClick。
     func attachMergedPopover() {
         self.statusItem.menu = nil
         if self.popoverMenuController == nil {
@@ -96,17 +85,6 @@ extension StatusItemController {
     /// 直接复用 ProviderBrandIcon（internal），不依赖 private switcherIcon(for:)。
     func popoverSwitcherIcon(for provider: UsageProvider) -> NSImage? {
         ProviderBrandIcon.image(for: provider)
-    }
-
-    /// NSMenu 路径兜底：从 popover 模式切回时清掉合并与 per-provider statusItem 按钮上的残留 target/action。
-    /// 在两个 attachMenus 的 NSMenu 分支开头调用。
-    func clearPopoverButtonActions() {
-        self.statusItem.button?.target = nil
-        self.statusItem.button?.action = nil
-        for item in self.statusItems.values {
-            item.button?.target = nil
-            item.button?.action = nil
-        }
     }
 
     // MARK: - Per-provider popover（非合并模式）
@@ -769,16 +747,10 @@ extension StatusItemController {
 
     // MARK: - 面板可见性（子任务 A，MP-23）
 
-    /// popover-aware 版本：popover 路径下通过 MenuViewModel.isVisible 判断；
-    /// NSMenu 路径下沿用旧 openMenus 字典。
-    /// 两处 guard !self.isMergedMenuOpen（updateIcons 686、refreshMenusForLoginStateChange 787）自动获益。
+    /// popover 路径：通过 MenuViewModel.isVisible 判断。
     var isMergedMenuOpen: Bool {
-        if self.usePopoverMenu {
-            if self.menuViewModel.isVisible { return true }
-            return self.providerMenuViewModels.values.contains { $0.isVisible }
-        }
-        guard let mergedMenu else { return false }
-        return self.openMenus[ObjectIdentifier(mergedMenu)] != nil
+        if self.menuViewModel.isVisible { return true }
+        return self.providerMenuViewModels.values.contains { $0.isVisible }
     }
 
     // MARK: - 打开时刷新调度（子任务 B，MP-03/29）

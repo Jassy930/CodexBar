@@ -142,7 +142,7 @@ final class StatusItemController: NSObject, NSMenuDelegate, StatusItemControllin
     var deferredMenuInteractionRefreshTask: Task<Void, Never>?
     var highlightedMenuItems: [ObjectIdentifier: NSMenuItem] = [:]
 
-    // MARK: - Popover menu (gated by settings.usePopoverMenu; see StatusItemController+Popover)
+    // MARK: - Popover menu
 
     let menuViewModel = MenuViewModel()
     var popoverMenuController: PopoverMenuController<PopoverRootView>?
@@ -676,13 +676,7 @@ final class StatusItemController: NSObject, NSMenuDelegate, StatusItemControllin
         // briefly overwrite the animated frame with the static (phase=nil) icon.
         let phase: Double? = self.needsMenuBarIconAnimation() ? self.animationPhase : nil
         if self.shouldMergeIcons {
-            let skippedMergedRender = self.applyIcon(phase: phase)
-            if skippedMergedRender,
-               let mergedMenu = self.mergedMenu,
-               self.statusItem.menu === mergedMenu
-            {
-                return
-            }
+            self.applyIcon(phase: phase)
             guard !self.isMergedMenuOpen else {
                 self.updateAnimationState()
                 self.updateBlinkingState()
@@ -787,55 +781,11 @@ final class StatusItemController: NSObject, NSMenuDelegate, StatusItemControllin
     }
 
     private func attachMenus() {
-        if self.usePopoverMenu {
-            self.attachMergedPopover()
-            return
-        }
-        // ↓ original logic unchanged
-        self.clearPopoverButtonActions()
-        if self.mergedMenu == nil {
-            self.mergedMenu = self.makeMenu()
-        }
-        if self.statusItem.menu !== self.mergedMenu {
-            self.statusItem.menu = self.mergedMenu
-        }
-        self.prepareAttachedClosedMenusIfNeeded()
+        self.attachMergedPopover()
     }
 
     private func attachMenus(fallback: UsageProvider? = nil) {
-        if self.usePopoverMenu {
-            self.attachProviderPopovers(fallback: fallback)
-            return
-        }
-        self.clearPopoverButtonActions()
-        for provider in UsageProvider.allCases {
-            // Only access/create the status item if it's actually needed
-            let shouldHaveItem = self.isEnabled(provider) || fallback == provider
-
-            if shouldHaveItem {
-                let item = self.lazyStatusItem(for: provider)
-
-                if self.isEnabled(provider) {
-                    if self.providerMenus[provider] == nil {
-                        self.providerMenus[provider] = self.makeMenu(for: provider)
-                    }
-                    let menu = self.providerMenus[provider]
-                    if item.menu !== menu {
-                        item.menu = menu
-                    }
-                } else if fallback == provider {
-                    if self.fallbackMenu == nil {
-                        self.fallbackMenu = self.makeMenu(for: nil)
-                    }
-                    if item.menu !== self.fallbackMenu {
-                        item.menu = self.fallbackMenu
-                    }
-                }
-            } else if let item = self.statusItems[provider] {
-                item.menu = nil
-            }
-        }
-        self.prepareAttachedClosedMenusIfNeeded()
+        self.attachProviderPopovers(fallback: fallback)
     }
 
     private func rebuildProviderStatusItems() {
